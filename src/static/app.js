@@ -20,12 +20,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // Build participants list with delete icon
+        const participantsList = document.createElement("ul");
+        participantsList.className = "participants-list";
+        details.participants.forEach(email => {
+          const li = document.createElement("li");
+          li.textContent = email;
+          // Add delete icon
+          const deleteIcon = document.createElement("span");
+          deleteIcon.className = "delete-icon";
+          deleteIcon.innerHTML = "&#128465;"; // Unicode trash can
+          deleteIcon.title = "Unregister participant";
+          deleteIcon.addEventListener("click", async () => {
+            if (confirm(`Unregister ${email} from ${name}?`)) {
+              try {
+                const response = await fetch(`/activities/${encodeURIComponent(name)}/unregister?email=${encodeURIComponent(email)}`, {
+                  method: "DELETE"
+                });
+                const result = await response.json();
+                if (response.ok) {
+                  fetchActivities();
+                } else {
+                  alert(result.detail || "Failed to unregister participant.");
+                }
+              } catch (err) {
+                alert("Error unregistering participant.");
+              }
+            }
+          });
+          li.appendChild(deleteIcon);
+          participantsList.appendChild(li);
+        });
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants-section">
+            <strong>Participants:</strong>
+          </div>
         `;
+        activityCard.querySelector(".participants-section").appendChild(participantsList);
 
         activitiesList.appendChild(activityCard);
 
@@ -62,6 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // Refresh activities list after signup
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
